@@ -1,0 +1,6 @@
+{
+  "name": "ระบบจองกิจกรรมพัฒนานิสิต - TSU Activities",
+  "description": "ระบบจัดการและจองกิจกรรมพัฒนานิสิตนอกชั้นเรียน พร้อมระบบเข้าสู่ระบบ (Sign in with Google) และบันทึกข้อมูลซิงค์ลง Google Sheets",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
