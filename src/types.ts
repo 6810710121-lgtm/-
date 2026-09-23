@@ -19,6 +19,7 @@ export interface Activity {
   tags: string[];
   bannerGradient: string;
   isPopular?: boolean;
+  isClosed?: boolean;
 }
 
 export interface Booking {
@@ -42,6 +43,8 @@ export interface Booking {
   activityDate: string;
   activityHours: number;
   syncedToSheets?: boolean;
+  checkedIn?: boolean;
+  checkedInAt?: string;
 }
 
 export interface UserProfile {

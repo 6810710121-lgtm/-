@@ -76,6 +76,11 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
                 <span>ยอดนิยม</span>
               </span>
             )}
+            {activity.isClosed && (
+              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-500 text-white shadow-xs">
+                <span>ปิดรับสมัคร</span>
+              </span>
+            )}
             <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-black/20 text-white">
               <Award className="w-3 h-3" />
               <span>{activity.activityHours} ชม.</span>
@@ -173,6 +178,14 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           >
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
             <span>จองแล้ว</span>
+          </button>
+        ) : activity.isClosed ? (
+          <button
+            disabled
+            className="flex-1 px-3 py-2 text-xs font-medium text-rose-500 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-center space-x-1 cursor-not-allowed"
+          >
+            <AlertCircle className="w-3.5 h-3.5" />
+            <span>ปิดรับสมัครแล้ว</span>
           </button>
         ) : isFull ? (
           <button

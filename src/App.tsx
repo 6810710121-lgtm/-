@@ -28,6 +28,8 @@ import { ActivityDetailModal } from './components/ActivityDetailModal';
 import { MyBookingsTab } from './components/MyBookingsTab';
 import { ProxyCheckTab } from './components/ProxyCheckTab';
 import { StatsTab } from './components/StatsTab';
+import { AdminTab } from './components/AdminTab';
+import { ActivityFormModal } from './components/ActivityFormModal';
 import { GoogleSignInButton } from './components/GoogleSignInButton';
 
 const STORAGE_KEY_BOOKINGS = 'tsu_activity_bookings_v2';
@@ -109,10 +111,15 @@ export default function App() {
   });
 
   // UI Navigation
-  const [activeTab, setActiveTab] = useState<'activities' | 'my-bookings' | 'stats' | 'proxy-check'>('activities');
+  const [activeTab, setActiveTab] = useState<'activities' | 'my-bookings' | 'stats' | 'proxy-check' | 'admin'>('activities');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Admin states
+  const [isAdmin, setIsAdmin] = useState<boolean>(true);
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [isActivityFormOpen, setIsActivityFormOpen] = useState<boolean>(false);
 
   // Modals
   const [bookingActivity, setBookingActivity] = useState<Activity | null>(null);
@@ -291,6 +298,172 @@ export default function App() {
     showNotification('success', `ยกเลิกการจองรหัส ${bookingId} เรียบร้อยแล้ว คืนที่นั่งสู่ระบบ`);
   };
 
+  // ================= ADMIN HANDLERS =================
+  const handleOpenAddActivity = () => {
+    setEditingActivity(null);
+    setIsActivityFormOpen(true);
+  };
+
+  const handleOpenEditActivity = (activity: Activity) => {
+    setEditingActivity(activity);
+    setIsActivityFormOpen(true);
+  };
+
+  const handleSaveActivity = (activityData: Partial<Activity>) => {
+    if (editingActivity) {
+      // Update existing
+      setActivities((prev) =>
+        prev.map((act) => {
+          if (act.id === editingActivity.id) {
+            return {
+              ...act,
+              ...activityData,
+              maxSeats: activityData.maxSeats || act.maxSeats
+            } as Activity;
+          }
+          return act;
+        })
+      );
+      showNotification('success', `อัปเดตข้อมูลกิจกรรม "${activityData.title}" สำเร็จ`);
+    } else {
+      // Create new
+      const nextNum = activities.length + 1;
+      const newId = `ACT-2026-${nextNum.toString().padStart(3, '0')}`;
+      const newAct: Activity = {
+        id: newId,
+        title: activityData.title || 'กิจกรรมใหม่',
+        category: activityData.category || 'academic',
+        categoryLabel: activityData.categoryLabel || 'ทักษะวิชาการ & นวัตกรรม',
+        iconName: activityData.iconName || 'Cpu',
+        description: activityData.description || '',
+        location: activityData.location || '',
+        speaker: activityData.speaker || '',
+        startDate: activityData.startDate || '2026-10-01',
+        startTime: activityData.startTime || '13:00',
+        endTime: activityData.endTime || '16:00',
+        month: activityData.month || 10,
+        year: activityData.year || 2026,
+        maxSeats: Number(activityData.maxSeats) || 60,
+        enrolledCount: 0,
+        activityHours: Number(activityData.activityHours) || 3,
+        targetAudience: activityData.targetAudience || 'นิสิตทุกชั้นปี',
+        tags: activityData.tags || ['ทักษะแห่งอนาคต'],
+        bannerGradient: activityData.bannerGradient || 'from-blue-600 to-indigo-700',
+        isPopular: !!activityData.isPopular,
+        isClosed: !!activityData.isClosed
+      };
+      setActivities((prev) => [newAct, ...prev]);
+      showNotification('success', `สร้างกิจกรรม "${newAct.title}" รหัส ${newId} สำเร็จ`);
+    }
+  };
+
+  const handleDeleteActivity = (activityId: string) => {
+    const act = activities.find((a) => a.id === activityId);
+    if (!act) return;
+    const confirmed = window.confirm(
+      `คุณต้องการลบกิจกรรม "${act.title}" ใช่หรือไม่?\nคำเตือน: ข้อมูลกิจกรรมจะถูกลบออกจากระบบอย่างถาวร`
+    );
+    if (!confirmed) return;
+
+    setActivities((prev) => prev.filter((a) => a.id !== activityId));
+    showNotification('success', `ลบกิจกรรม "${act.title}" เรียบร้อยแล้ว`);
+  };
+
+  const handleToggleCloseActivity = (activityId: string) => {
+    setActivities((prev) =>
+      prev.map((act) => {
+        if (act.id === activityId) {
+          const nextClosed = !act.isClosed;
+          showNotification(
+            'success',
+            nextClosed
+              ? `ปิดรับสมัครกิจกรรม "${act.title}" เรียบร้อยแล้ว`
+              : `เปิดรับสมัครกิจกรรม "${act.title}" เรียบร้อยแล้ว`
+          );
+          return { ...act, isClosed: nextClosed };
+        }
+        return act;
+      })
+    );
+  };
+
+  const handleToggleCheckIn = (bookingId: string) => {
+    setBookings((prev) =>
+      prev.map((b) => {
+        if (b.id === bookingId) {
+          const nextChecked = !b.checkedIn;
+          showNotification(
+            'success',
+            nextChecked
+              ? `เช็คชื่อนิสิต ${b.prefix}${b.firstName} ${b.lastName} เข้าร่วมกิจกรรมแล้ว`
+              : `ยกเลิกการเช็คชื่อนิสิต ${b.prefix}${b.firstName} ${b.lastName}`
+          );
+          return {
+            ...b,
+            checkedIn: nextChecked,
+            checkedInAt: nextChecked ? new Date().toISOString() : undefined
+          };
+        }
+        return b;
+      })
+    );
+  };
+
+  const handleResetData = () => {
+    setActivities(initialActivitiesData as Activity[]);
+    localStorage.removeItem(STORAGE_KEY_ACTIVITIES);
+    localStorage.removeItem(STORAGE_KEY_BOOKINGS);
+    setBookings([
+      {
+        id: 'BK-2026-901',
+        activityId: 'ACT-2026-001',
+        activityTitle: 'อบรมเชิงปฏิบัติการ GenAI & Prompt Engineering สำหรับนิสิตยุคใหม่',
+        studentId: '6610110023',
+        prefix: 'นาย',
+        firstName: 'กานต์',
+        lastName: 'วัฒนพานิช',
+        faculty: 'คณะวิทยาศาสตร์และนวัตกรรมดิจิทัล',
+        major: 'วิทยาการคอมพิวเตอร์',
+        yearLevel: 'ชั้นปีที่ 2',
+        phone: '089-1234567',
+        email: 'kan.w@tsu.ac.th',
+        bookedAt: '2026-09-01T10:15:00.000Z',
+        bookedByEmail: 'cgobbun@gmail.com',
+        bookedByName: 'Chanon Gobbun',
+        isProxyBooking: false,
+        activityDate: '2026-09-12',
+        activityHours: 4,
+        syncedToSheets: true,
+        checkedIn: true,
+        checkedInAt: '2026-09-12T09:00:00.000Z'
+      },
+      {
+        id: 'BK-2026-902',
+        activityId: 'ACT-2026-002',
+        activityTitle: 'จิตอาสาพัฒนาชุมชนและอนุรักษ์สิ่งแวดล้อมชายฝั่งทะเลสาบสงขลา',
+        studentId: '6510310088',
+        prefix: 'นางสาว',
+        firstName: 'กุลธิดา',
+        lastName: 'แสงสว่าง',
+        faculty: 'คณะศึกษาศาสตร์',
+        major: 'การศึกษาปฐมวัย',
+        yearLevel: 'ชั้นปีที่ 3',
+        phone: '081-9876543',
+        email: 'kul.s@tsu.ac.th',
+        bookedAt: '2026-09-02T14:30:00.000Z',
+        bookedByEmail: 'cgobbun@gmail.com',
+        bookedByName: 'Chanon Gobbun',
+        isProxyBooking: true,
+        notes: 'เพื่อนติดภารกิจออกฝึกสอนภาคสนาม จึงฝากลงทะเบียน',
+        activityDate: '2026-09-18',
+        activityHours: 6,
+        syncedToSheets: true,
+        checkedIn: false
+      }
+    ]);
+    showNotification('success', 'รีเซ็ตข้อมูลระบบและกิจกรรมกลับสู่ค่าเริ่มต้นเรียบร้อย');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col selection:bg-blue-500 selection:text-white">
       {/* Toast Notification */}
@@ -321,6 +494,7 @@ export default function App() {
         isLoggingIn={isLoggingIn}
         bookingCount={bookings.length}
         spreadsheetUrl={spreadsheetUrl}
+        isAdmin={isAdmin}
       />
 
       {/* Main Body */}
@@ -448,6 +622,25 @@ export default function App() {
         {activeTab === 'stats' && (
           <StatsTab activities={activities} bookings={bookings} />
         )}
+
+        {/* Tab 5: Admin Panel */}
+        {activeTab === 'admin' && (
+          <AdminTab
+            activities={activities}
+            bookings={bookings}
+            user={user}
+            spreadsheetUrl={spreadsheetUrl}
+            onAddActivity={handleOpenAddActivity}
+            onEditActivity={handleOpenEditActivity}
+            onDeleteActivity={handleDeleteActivity}
+            onToggleCloseActivity={handleToggleCloseActivity}
+            onToggleCheckIn={handleToggleCheckIn}
+            onCancelBooking={handleCancelBooking}
+            onResetData={handleResetData}
+            isAdmin={isAdmin}
+            setIsAdmin={setIsAdmin}
+          />
+        )}
       </main>
 
       {/* Footer */}
@@ -487,6 +680,16 @@ export default function App() {
           setDetailActivity(null);
           setBookingActivity(act);
         }}
+      />
+
+      <ActivityFormModal
+        isOpen={isActivityFormOpen}
+        onClose={() => {
+          setIsActivityFormOpen(false);
+          setEditingActivity(null);
+        }}
+        onSubmit={handleSaveActivity}
+        initialData={editingActivity}
       />
     </div>
   );
